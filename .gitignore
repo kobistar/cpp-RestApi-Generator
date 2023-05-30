@@ -1,0 +1,6 @@
+*
+!modules\openapi-generator\src\main\java\org\openapitools\codegen\languages.CppPocoAbstractCodegen.java
+!modules\openapi-generator\src\main\java\org\openapitools\codegen\languages.CppPocoClientCodegen.java
+!modules\openapi-generator\src\main\resources\cpp-poco-client\
+!modules\openapi-generator\src\main\resources\META-INF\services\org.openapitools.codegen.CodegenConfig
+!.gitignore
