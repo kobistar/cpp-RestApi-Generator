@@ -1,0 +1,42 @@
+{{>licenseInfo}}
+#ifndef {{prefix}}_HTTP_FILE_ELEMENT_H
+#define {{prefix}}_HTTP_FILE_ELEMENT_H
+
+
+#include <vector>
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+class {{prefix}}HttpFileElement {
+
+public:
+    std::string variable_name;
+    std::string local_filename;
+    std::string request_filename;
+    std::string mime_type;
+    void setMimeType(const std::string &mime);
+    void setFileName(const std::string &name);
+    void setVariableName(const std::string &name);
+    void setRequestFileName(const std::string &name);
+    bool isSet() const;
+    bool fromStringValue(const std::string &instr);
+    bool fromJsonValue(const Poco::Dynamic::Var &jval);
+    bool fromByteArray(const std::vector<char> &bytes);
+    bool saveToFile(const std::string &variable_name, const std::string &local_filename, const std::string &request_filename, const std::string &mime, const std::vector<char> &bytes);
+    std::string asJson() const;
+    Poco::Dynamic::Var asJsonValue() const;
+    std::vector<char> asByteArray() const;
+    std::vector<char> loadFromFile(const std::string &variable_name, const std::string &local_filename, const std::string &request_filename, const std::string &mime);
+};
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}
+
+
+
+
+
+#endif // {{prefix}}_HTTP_FILE_ELEMENT_H

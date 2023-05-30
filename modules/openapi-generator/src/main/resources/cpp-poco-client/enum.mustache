@@ -1,0 +1,57 @@
+{{>licenseInfo}}
+#ifndef {{prefix}}_ENUM_H
+#define {{prefix}}_ENUM_H
+
+#include <Poco/JSON/Parser.h>
+#include <string>
+
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+class {{prefix}}Enum {
+public:
+    {{prefix}}Enum() {}
+
+    {{prefix}}Enum(std::string jsonString) {
+        fromJson(jsonString);
+    }
+
+    virtual ~{{prefix}}Enum() {}
+
+    virtual Poco::Dynamic::Var asJsonValue() const {
+        Poco::JSON::Parser parser;
+        return parser.parse(jstr);
+    }
+
+    virtual std::string asJson() const {
+        return jstr;
+    }
+
+    virtual void fromJson(std::string jsonString) {
+        jstr = jsonString;
+    }
+
+    virtual void fromJsonValue(Poco::Dynamic::Var jval) {
+        jstr = jval.toString();
+    }
+
+    virtual bool isSet() const {
+        return false;
+    }
+
+    virtual bool isValid() const {
+        return true;
+    }
+
+private:
+    std::string jstr;
+};
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}
+
+
+#endif // {{prefix}}_ENUM_H

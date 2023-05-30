@@ -1,0 +1,437 @@
+{{>licenseInfo}}
+#include <Poco/Timer.h>
+#include <Poco/URI.h>
+#include <Poco/Net/HTTPClientSession.h>
+#include <Poco/Path.h>
+#include <string>
+#include <cctype>
+#include <sstream>
+#include <iomanip>
+#include <Poco/Net/HTTPRequest.h>
+#include <Poco/Net/HTTPResponse.h>
+#include <Poco/Net/HTMLForm.h>
+#include <Poco/StreamCopier.h>
+#include <Poco/Exception.h>
+#include <random>
+#include <Poco/File.h>
+#include <Poco/FileStream.h>
+#include <Poco/DeflatingStream.h>
+#include <Poco/InflatingStream.h>
+#include <Poco/UUIDGenerator.h>
+#include <Poco/String.h>
+
+
+#define SKIP_EMPTY_PARTS std::string::SkipEmptyParts
+{{#contentCompression}}
+#include <zlib.h>{{/contentCompression}}
+
+#include "{{prefix}}HttpRequest.h"
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+{{prefix}}HttpRequestInput::{{prefix}}HttpRequestInput() {
+    initialize();
+}
+
+{{prefix}}HttpRequestInput::{{prefix}}HttpRequestInput(std::string v_url_str, std::string v_http_method) {
+    initialize();
+    url_str = v_url_str;
+    http_method = v_http_method;
+}
+
+void {{prefix}}HttpRequestInput::initialize() {
+    var_layout = NOT_SET;
+    url_str = "";
+    http_method = "GET";
+}
+
+void {{prefix}}HttpRequestInput::add_var(std::string key, std::string value) {
+    vars[key] = value;
+}
+
+void {{prefix}}HttpRequestInput::add_file(std::string variable_name, std::string local_filename, std::string request_filename, std::string mime_type) {
+    {{prefix}}HttpFileElement file;
+    file.variable_name = variable_name;
+    file.local_filename = local_filename;
+    file.request_filename = request_filename;
+    file.mime_type = mime_type;
+    files.emplace_back(file);
+}
+
+{{prefix}}HttpRequestWorker::{{prefix}}HttpRequestWorker(Poco::Net::HTTPClientSession *_manager)
+    : manager(_manager), timeOutTimer(), isResponseCompressionEnabled(false), isRequestCompressionEnabled(false), httpResponseCode(-1) {
+
+    auto now = Poco::Timestamp().epochMicroseconds();
+    std::srand(now);
+
+    if (manager == nullptr) {
+        manager = new Poco::Net::HTTPClientSession();
+    }
+    workingDirectory = Poco::Path::current();
+    timeOutTimer.setStartInterval(0);
+    timeOutTimer.setPeriodicInterval(0);
+}
+
+{{prefix}}HttpRequestWorker::~{{prefix}}HttpRequestWorker() {
+    timeOutTimer.stop();
+    for (const auto &item : multiPartFields) {
+        if (item.first.empty()) {
+            delete item.second;         //snad to funguje
+        }
+    }
+}
+
+std::map<std::string, std::string> {{prefix}}HttpRequestWorker::getResponseHeaders() const {
+    return headers;
+}
+
+{{prefix}}HttpFileElement {{prefix}}HttpRequestWorker::getHttpFileElement(const std::string &fieldname) {
+    if (!files.empty()) {
+        if (fieldname.empty()) {
+            return files.begin()->second;
+        } else if (files.count(fieldname) > 0) {
+            return files[fieldname];
+        }
+    }
+    return {{prefix}}HttpFileElement();
+}
+
+std::vector<unsigned char> *{{prefix}}HttpRequestWorker::getMultiPartField(const std::string &fieldname) {
+    if (!multiPartFields.empty()) {
+        if (fieldname.empty()) {
+            return multiPartFields.begin()->second;
+        } else if (multiPartFields.count(fieldname) > 0) {
+            return multiPartFields[fieldname];
+        }
+    }
+    return nullptr;
+}
+
+void {{prefix}}HttpRequestWorker::setTimeOut(int timeOutMs) {
+    if (timeOutMs > 0) {
+        timeOutTimer.setPeriodicInterval(timeOutMs);
+    } else {
+        timeOutTimer.stop();
+    }
+}
+
+void {{prefix}}HttpRequestWorker::setWorkingDirectory(const std::string &path) {
+    if (!path.empty()) {
+        workingDirectory = path;
+    }
+}
+
+void {{prefix}}HttpRequestWorker::setResponseCompressionEnabled(bool enable) {
+    isResponseCompressionEnabled = enable;
+}
+
+void {{prefix}}HttpRequestWorker::setRequestCompressionEnabled(bool enable) {
+    isRequestCompressionEnabled = enable;
+}
+
+int  {{prefix}}HttpRequestWorker::getHttpResponseCode() const{
+    return httpResponseCode;
+}
+
+std::string {{prefix}}HttpRequestWorker::http_attribute_encode(std::string attribute_name, std::string input) {
+    // result structure follows RFC 5987
+    bool need_utf_encoding = false;
+    std::string result = "";
+    char c;
+    for (int i = 0; i < input.length(); i++) {
+        c = input[i];
+        if (c == '\\' || c == '/' || c == '\0' || c < ' ' || c > '~') {
+            need_utf_encoding = true;
+        } else if (c == '"') {
+            result += "\\\"";
+        } else {
+            result += c;
+        }
+    }
+
+    if (result.length() == 0) {
+        need_utf_encoding = true;
+    }
+
+    if (!need_utf_encoding) {
+        return attribute_name + "=\"" + result + "\"";
+    }
+
+    std::string result_utf8 = "";
+    for (int i = 0; i < input.length(); i++) {
+        c = input[i];
+        if ((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+            result_utf8 += c;
+        } else {
+            std::stringstream hex;
+            hex << std::uppercase << std::setfill('0') << std::setw(2) << std::hex << (int)(unsigned char)c;
+            result_utf8 += "%" + hex.str();
+        }
+    }
+
+    return attribute_name + "=\"" + result + "\"; " + attribute_name + "*=utf-8''" + result_utf8;
+}
+
+void {{prefix}}HttpRequestWorker::execute({{prefix}}HttpRequestInput *input) {
+
+    Poco::URI uri(input->url_str);
+    Poco::Net::HTTPRequest request(input->http_method, uri.getPathAndQuery(), Poco::Net::HTTPMessage::HTTP_1_1);
+    Poco::Net::HTTPClientSession session(uri.getHost(), uri.getPort());
+    std::stringstream request_content;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 9999999);
+    std::string boundary = "__-----------------------" + std::to_string(std::time(nullptr)) + std::to_string(dis(gen));
+
+    // decide on the variable layout
+    if (input->files.size() > 0) {
+        input->var_layout = MULTIPART;
+    }
+    if (input->var_layout == NOT_SET) {
+        input->var_layout = input->http_method == "GET" || input->http_method == "HEAD" ? ADDRESS : URL_ENCODED;
+    }
+
+    // prepare request content
+    if (input->var_layout == ADDRESS || input->var_layout == URL_ENCODED) {
+        // variable layout is ADDRESS or URL_ENCODED
+        if (!input->vars.empty()) {
+            bool first = true;
+            for (auto const& [key, value] : input->vars) {
+                if (!first) {
+                    request_content << "&";
+                }
+                first = false;
+                request_content << key << "=" << value;
+            }
+            if (input->var_layout == ADDRESS) {
+                input->url_str += "?" + request_content.str();
+                request_content.str("");
+            }
+        }
+    } else {
+        // variable layout is MULTIPART
+
+        // add variables
+        for (auto const& [key, value] : input->vars) {
+            request_content << "--" << boundary << "\r\n";
+            request_content << "Content-Disposition: form-data; name=" << key << "\r\n";
+            request_content << "Content-Type: text/plain\r\n\r\n";
+            request_content << value << "\r\n";
+        }
+    // add files
+        for (auto const& file : input->files) {
+            Poco::File pFile(file.local_filename);
+            if (!pFile.exists() || !pFile.isFile() || !pFile.canRead()) {
+                continue;
+            }
+            std::string file_name = pFile.path();
+            Poco::Path path(file_name);
+            std::string file_basename = path.getBaseName();
+            request_content << "--" << boundary << "\r\n";
+            request_content << "Content-Disposition: form-data; name=" << file.variable_name << "; filename=" << file_basename << "\r\n";
+            request_content << "Content-Type: " << file.mime_type << "\r\n\r\n";
+            std::string file_contents;
+            Poco::FileInputStream fis(file.local_filename);
+            Poco::StreamCopier::copyToString(fis, file_contents);
+
+            request_content << file_contents << "\r\n";
+        }
+        request_content << "--" << boundary << "--\r\n";
+    }
+
+    // set request content
+    if (request_content.str().size() > 0) {
+        request.setContentType("multipart/form-data; boundary=" + boundary);
+        request.setContentLength(request_content.str().size());
+    }
+
+    // send request
+    try {
+        session.sendRequest(request) << request_content.str();
+        std::istream& rs = session.receiveResponse(response);
+        Poco::StreamCopier::copyToString(rs, response_str);
+        on_reply_finished(&response, rs);
+    } catch (Poco::Exception& e) {
+        error_str = e.what();
+    }
+}
+
+void {{prefix}}HttpRequestWorker::on_reply_finished(Poco::Net::HTTPResponse *response, std::istream& rs) {
+    // reset variables
+    error_type = Poco::Net::HTTPResponse::HTTP_OK;
+    error_str = "";
+    httpResponseCode = -1;
+
+    // process response
+    try {
+        // get response headers
+        Poco::Net::HTTPResponse::ConstIterator it = response->begin();
+        while (it != response->end()) {
+            this->headers.insert(std::make_pair(it->first, it->second));
+            ++it;
+        }
+
+        // get response status code
+        httpResponseCode = response->getStatus();
+
+        // process response content
+        process_response(response, rs);
+    } catch (Poco::Exception& e) {
+        on_reply_timeout(response, rs);
+        error_str = e.what();
+    }
+
+    // emit the finished signal
+    on_execution_finished(this);
+}
+
+void {{prefix}}HttpRequestWorker::on_reply_timeout(Poco::Net::HTTPResponse *reply, std::istream& rs) {
+    error_type = Poco::Net::HTTPResponse::HTTP_GATEWAY_TIMEOUT;
+    reply->clear();
+    error_str = "Timed out waiting for response";
+    on_execution_finished(this);
+}
+
+void {{prefix}}HttpRequestWorker::process_response(Poco::Net::HTTPResponse *reply, std::istream& rs) {
+    std::string contentDispositionHdr;
+    std::string contentTypeHdr;
+    std::string contentEncodingHdr;
+    for(auto hdr: getResponseHeaders()){
+        std::string lowerCase = Poco::toLower(hdr.first);
+        if(lowerCase == ("content-disposition")){
+            contentDispositionHdr = hdr.second;
+        }
+        if(lowerCase == ("content-type")){
+            contentTypeHdr = hdr.second;
+        }
+        if(lowerCase == ("content-encoding")){
+            contentEncodingHdr = hdr.second;
+        }
+    }
+
+    if (!contentDispositionHdr.empty()) {
+        if (contentDispositionHdr.find("attachment") != std::string::npos) {
+            std::string filename = Poco::UUIDGenerator().createOne().toString();
+            std::size_t pos = contentDispositionHdr.find("filename=");
+            if (pos != std::string::npos) {
+                pos += 9;
+                filename = contentDispositionHdr.substr(pos, contentDispositionHdr.find(";", pos) - pos);
+            }
+            Poco::File file(Poco::Path(workingDirectory, filename));
+            file.createFile();
+            Poco::FileOutputStream fileStream(file.path());
+            std::ostream &ostream = fileStream;
+            OAIHttpFileElement felement;
+            std::vector<char> output(std::istreambuf_iterator<char>(rs), {});
+            felement.saveToFile("", workingDirectory + "/" + filename, filename, contentTypeHdr, output);
+            Poco::StreamCopier::copyStream(rs, ostream);
+            files.insert(std::make_pair(file.path(), felement));
+        }
+
+    } else if (!contentTypeHdr.empty()) {
+        if (contentTypeHdr.find("multipart/form-data") != std::string::npos) {
+        // TODO : Handle Multipart responses
+        } else {
+            if (!contentEncodingHdr.empty()) {
+                if (contentEncodingHdr.find("gzip") != std::string::npos || contentEncodingHdr.find("deflate") != std::string::npos) {
+                    Poco::InflatingInputStream inflater(rs);
+                    Poco::StreamCopier::copyToString(inflater, response_str);
+                } else if (contentEncodingHdr.find("identity") != std::string::npos) {
+                    Poco::StreamCopier::copyToString(rs, response_str);
+                }
+            } else {
+                Poco::StreamCopier::copyToString(rs, response_str);
+            }
+        }
+    }
+}
+
+std::vector<unsigned char> {{prefix}}HttpRequestWorker::decompress(const std::vector<unsigned char>& data){
+    {{#contentCompression}}std::vector<unsigned char> result;
+    bool sts = false;
+    do{
+        z_stream strm{};
+        static const int CHUNK_SIZE = 8*1024;
+        char out[CHUNK_SIZE];
+        if (data.size() <= 4) {
+            break;
+        }
+        strm.avail_in = data.size();
+        strm.next_in = (Bytef*)(data.data());
+        if(Z_OK != inflateInit2(&strm, 15 + 32)){
+            break;
+        }
+        do {
+            sts = false;
+            strm.avail_out = CHUNK_SIZE;
+            strm.next_out = (Bytef*)(out);
+            if(inflate(&strm, Z_NO_FLUSH) < Z_OK){
+                break;
+            }
+            result.insert(out, CHUNK_SIZE - strm.avail_out);
+            sts = true;
+        } while (strm.avail_out == 0);
+        inflateEnd(&strm);
+    } while(false);
+    return sts ? result : std::vector<unsigned char>();{{/contentCompression}}{{^contentCompression}}
+    return std::vector<unsigned char>();{{/contentCompression}}
+}
+
+std::vector<unsigned char> {{prefix}}HttpRequestWorker::compress(const std::vector<unsigned char>& input, int level, {{prefix}}CompressionType compressType) {
+    {{#contentCompression}}std::vector<unsigned char> output;
+    static const int GZIP_WINDOW_BIT = 15+16;
+    static const int ZLIB_WINDOW_BIT = 15;
+    static const int CHUNK_SIZE = 8*1024;
+    int windowBits;
+    if( compressType == {{prefix}}CompressionType::Gzip ){
+        windowBits = GZIP_WINDOW_BIT;
+    } else if ( compressType == {{prefix}}CompressionType::Zlib ){
+        windowBits = ZLIB_WINDOW_BIT;
+    }
+    do{
+        int flush = 0, ret = 0;
+        bool error_sts = false;
+        z_stream strm{};
+        if(input.length() <= 0) {
+            break;
+        }
+        if (deflateInit2(&strm, qMax(-1, qMin(9, level)), Z_DEFLATED, windowBits, 8, Z_DEFAULT_STRATEGY) != Z_OK){
+            break;
+        }
+        output.clear();
+        auto input_data = input.data();
+        int input_data_left = input.length();
+        do {
+            int chunk_size = qMin(CHUNK_SIZE, input_data_left);
+            strm.next_in = (unsigned char*)input_data;
+            strm.avail_in = chunk_size;
+            input_data += chunk_size;
+            input_data_left -= chunk_size;
+            flush = (input_data_left <= 0 ? Z_FINISH : Z_NO_FLUSH);
+            do {
+                char out[CHUNK_SIZE];
+                strm.next_out = (unsigned char*)out;
+                strm.avail_out = CHUNK_SIZE;
+                ret = deflate(&strm, flush);
+                if(ret == Z_STREAM_ERROR) {
+                    error_sts = true;
+                    break;
+                }
+                auto have = (CHUNK_SIZE - strm.avail_out);
+                if(have > 0){
+                    output.insert((char*)out, have);
+                }
+            } while (strm.avail_out == 0);
+        } while ((flush != Z_FINISH) && !(error_sts));
+        deflateEnd(&strm);
+    } while(false);
+    return output;{{/contentCompression}}{{^contentCompression}}
+    return std::vector<unsigned char>();{{/contentCompression}}
+}
+
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}

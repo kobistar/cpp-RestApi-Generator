@@ -1,0 +1,75 @@
+{{>licenseInfo}}
+/**
+ * Representing a Server configuration.
+ */
+#ifndef {{prefix}}_SERVERVCONFIGURATION_H
+#define {{prefix}}_SERVERVCONFIGURATION_H
+
+#include <map>
+#include <regex>
+#include <Poco/URI.h>
+#include <stdexcept>
+#include "{{prefix}}ServerVariable.h"
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+class {{prefix}}ServerConfiguration {
+public:
+    /**
+     * @param url A URL to the target host.
+     * @param description A description of the host designated by the URL.
+     * @param variables A map between a variable name and its value. The value is used for substitution in the server's URL template.
+     */
+    {{prefix}}ServerConfiguration(const Poco::URI &url, const std::string &description, const std::map<std::string, {{prefix}}ServerVariable> &variables)
+    : _description(description),
+      _variables(variables),
+      _url(url){}
+    {{prefix}}ServerConfiguration(){}
+    ~{{prefix}}ServerConfiguration(){}
+
+    /**
+     * Format URL template using given variables.
+     *
+     * @param variables A map between a variable name and its value.
+     * @return Formatted URL.
+     */
+    std::string URL() {
+        std::string url = _url.toString();
+        if(!_variables.empty()){
+            // go through variables and replace placeholders
+            for (auto const& v : _variables) {
+                std::string name = v.first;
+                {{prefix}}ServerVariable serverVariable = v.second;
+                std::string value = serverVariable._defaultValue;
+
+                if (!serverVariable._enumValues.empty() && !(serverVariable._enumValues.find(value) != serverVariable._enumValues.end())) {
+                    throw std::runtime_error(std::string("The variable " + name + " in the server URL has invalid value " + value + "."));
+                }
+                std::regex regex(std::string("\\{" + name + "\\}"));
+                url = std::regex_replace(url, regex, value);
+
+            }
+            return url;
+        }
+        return url;
+    }
+
+    int setDefaultValue(const std::string &variable,const std::string &value){
+      if(_variables.find(variable) != _variables.end())
+        return _variables[variable].setDefaultValue(value);
+      return -1;
+    }
+
+    std::string _description;
+    std::map<std::string, {{prefix}}ServerVariable> _variables;
+    Poco::URI _url;
+
+};
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}
+
+#endif // {{prefix}}_SERVERVCONFIGURATION_H

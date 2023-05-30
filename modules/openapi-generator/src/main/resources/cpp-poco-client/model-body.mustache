@@ -1,0 +1,101 @@
+{{>licenseInfo}}{{#models}}{{#model}}
+#include "{{classname}}.h"
+
+#include "{{prefix}}Helpers.h"
+#include <Poco/JSON/Parser.h>
+#include <sstream>
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+{{^isEnum}}{{#vars}}    const std::string {{classname}}::{{name}}_STR = "{{name}}";
+{{/vars}}{{/isEnum}}
+
+{{classname}}::{{classname}}(std::string json) {
+    this->initializeModel(json);
+}
+
+{{classname}}::{{classname}}() {
+    this->initializeModel();
+}
+
+{{classname}}::~{{classname}}() {}
+
+void {{classname}}::initializeModel() {
+
+}
+void {{classname}}::initializeModel(std::string json) {
+    this->fromJson(json);
+}
+
+void {{classname}}::fromJson(std::string jsonString) {
+
+    {{^isEnum}}
+    Poco::JSON::Parser parser;
+    Poco::Dynamic::Var result = parser.parse(jsonString);
+    Poco::JSON::Object::Ptr jsonObject = result.extract<Poco::JSON::Object::Ptr>();
+
+    this->fromJsonObject(jsonObject);{{/isEnum}}{{#isEnum}}
+    //TODO{{/isEnum}}
+}
+
+void {{classname}}::fromJson{{^isEnum}}Object{{/isEnum}}{{#isEnum}}Value{{/isEnum}}(Poco::{{^isEnum}}JSON::Object::Ptr{{/isEnum}}{{#isEnum}}Dynamic::Var{{/isEnum}} json{{^isEnum}}Object{{/isEnum}}{{#isEnum}}Value{{/isEnum}}) {
+
+    {{^isEnum}}Poco::DynamicStruct ds = *jsonObject;
+
+    {{#vars}}this->{{name}} = ds[{{name}}_STR]{{#isString}}.toString();{{/isString}}{{^isString}}.extract<{{{dataType}}}>();{{/isString}}
+    {{/vars}}{{/isEnum}}{{#isEnum}}
+    fromJson(jsonValue.toString());{{/isEnum}}
+
+
+}
+
+std::string {{classname}}::asJson() const {
+
+    {{^isEnum}}Poco::JSON::Object::Ptr obj = this->asJsonObject();
+    std::ostringstream os;
+    obj->stringify(os, 2);
+    {{#allowableValues}}
+    switch (m_value){
+        {{#enumVars}}
+        case e{{classname}}::{{name}}:
+            val = {{#isString}}"{{value}}"{{/isString}}{{^isString}}std::string::number({{value}}){{/isString}};
+            break;{{#-last}}
+        default:
+            break;{{/-last}}
+        {{/enumVars}}
+    }{{/allowableValues}}
+    return os.str();{{/isEnum}}{{#isEnum}}
+    //TODO
+    return "TODO";{{/isEnum}}
+}
+
+Poco::{{^isEnum}}JSON::Object::Ptr{{/isEnum}}{{#isEnum}}Dynamic::Var{{/isEnum}} {{classname}}::asJson{{^isEnum}}Object{{/isEnum}}{{#isEnum}}Value{{/isEnum}}() const {
+
+    {{^isEnum}}Poco::JSON::Object::Ptr obj;
+
+    {{#vars}}
+    obj->set({{name}}_STR, {{name}});
+    {{/vars}}
+
+    return obj;{{/isEnum}}{{#isEnum}}
+    //TODO
+    Poco::Dynamic::Var jsonValue = asJson();
+    return jsonValue;{{/isEnum}}
+}
+
+{{^isEnum}}{{#vars}}{{{dataType}}} {{classname}}::{{getter}}() const {
+    return {{name}};
+}
+void {{classname}}::{{setter}}(const {{{dataType}}} &{{name}}) {
+    this->{{name}} = {{name}};
+}
+
+{{/vars}}{{/isEnum}}
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}
+{{/model}}
+{{/models}}

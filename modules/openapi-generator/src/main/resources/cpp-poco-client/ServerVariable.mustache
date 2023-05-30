@@ -1,0 +1,52 @@
+{{>licenseInfo}}
+/**
+ * Representing a Server Variable for server URL template substitution.
+ */
+#ifndef {{prefix}}_SERVERVARIABLE_H
+#define {{prefix}}_SERVERVARIABLE_H
+
+#include <set>
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+class {{prefix}}ServerVariable {
+public:
+
+    /**
+     * @param description A description for the server variable.
+     * @param defaultValue The default value to use for substitution.
+     * @param enumValues An enumeration of string values to be used if the substitution options are from a limited set.
+     */
+    {{prefix}}ServerVariable(const std::string &description, const std::string &defaultValue, const std::set<std::string> &enumValues)
+    : _defaultValue(defaultValue),
+      _description(description),
+      _enumValues(enumValues){}
+
+    {{prefix}}ServerVariable(){}
+    ~{{prefix}}ServerVariable(){}
+
+    int setDefaultValue(const std::string& value){
+      if( _enumValues.find(value) != _enumValues.end()){
+        _defaultValue = value;
+        return 0;
+      }
+      return -2;
+    }
+
+    std::string getDefaultValue(){return _defaultValue;}
+    std::set<std::string> getEnumValues(){return _enumValues;}
+
+
+    std::string _defaultValue;
+    std::string _description;
+    std::set<std::string> _enumValues;
+
+};
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}
+
+#endif // {{prefix}}_SERVERVARIABLE_H

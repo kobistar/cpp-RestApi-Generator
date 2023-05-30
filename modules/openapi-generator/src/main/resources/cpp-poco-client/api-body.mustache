@@ -1,0 +1,371 @@
+{{>licenseInfo}}
+#include "{{classname}}.h"
+#include "{{prefix}}ServerConfiguration.h"
+#include <Poco/URI.h>
+#include <Poco/Net/HTTPClientSession.h>
+#include <Poco/Net/HTTPRequest.h>
+#include <Poco/Net/HTTPResponse.h>
+#include <Poco/StreamCopier.h>
+#include <Poco/Net/HTMLForm.h>
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+{{classname}}::{{classname}}(const int timeOut)
+    : _timeOut(timeOut),
+      _manager(nullptr),
+      _isResponseCompressionEnabled(false),
+      _isRequestCompressionEnabled(false) {
+    initializeServerConfigs();
+}
+
+{{classname}}::~{{classname}}() {
+}
+
+void {{classname}}::initializeServerConfigs() {
+    //Default server
+    std::list<{{prefix}}ServerConfiguration> defaultConf = std::list<{{prefix}}ServerConfiguration>();
+    //varying endpoint server
+    {{#servers}}
+    std::list<{{prefix}}ServerConfiguration> serverConf = std::list<{{prefix}}ServerConfiguration>();
+    {{/servers}}
+{{#vendorExtensions.x-cpp-global-server-list}}
+    defaultConf.emplace_back({{prefix}}ServerConfiguration(
+    Poco::URI("{{{url}}}"),
+    "{{{description}}}{{^description}}No description provided{{/description}}",
+    {{#variables}}{{#-first}}std::map<std::string, {{prefix}}ServerVariable>{ {{/-first}}
+    {"{{{name}}}", {{prefix}}ServerVariable("{{{description}}}{{^description}}No description provided{{/description}}","{{{defaultValue}}}",
+    std::set<std::string>{ {{#enumValues}}{"{{{.}}}"}{{#-last}} })},{{/-last}}{{^-last}},{{/-last}}{{/enumValues}}{{^enumValues}}{"{{defaultValue}}"} })},{{/enumValues}}{{#-last}} }));{{/-last}}
+    {{/variables}}{{^variables}}std::map<std::string, {{prefix}}ServerVariable>()));{{/variables}}
+{{/vendorExtensions.x-cpp-global-server-list}}
+{{#operations}}
+   {{#operation}}
+   {{^servers}}
+    _serverConfigs.insert(std::make_pair("{{nickname}}", defaultConf));
+    _serverIndices.insert(std::make_pair("{{nickname}}", 0));
+    {{/servers}}
+    {{#servers}}
+    serverConf.emplace_back({{prefix}}ServerConfiguration(
+    Poco::URI("{{{url}}}"),
+    "{{{description}}}{{^description}}No description provided{{/description}}",
+    {{#variables}}{{#-first}}std::map<string, {{prefix}}ServerVariable>{ {{/-first}}
+    {"{{{name}}}", {{prefix}}ServerVariable("{{{description}}}{{^description}}No description provided{{/description}}","{{{defaultValue}}}",
+    std::set<string>{ {{#enumValues}}{"{{{.}}}"}{{#-last}} })}, {{/-last}}{{^-last}},{{/-last}}{{/enumValues}}{{^enumValues}}{"{{defaultValue}}"} })},{{/enumValues}}{{#-last}} }));{{/-last}}
+    {{/variables}}{{^variables}}std::map<string, {{prefix}}ServerVariable>()));{{/variables}}
+    {{#-last}}_serverConfigs.insert(std::make_pair("{{nickname}}", serverConf));
+    _serverIndices.insert(std::make_pair("{{nickname}}", 0));{{/-last}}
+{{/servers}}
+{{/operation}}
+{{/operations}}
+}
+
+/**
+* returns 0 on success and -1, -2 or -3 on failure.
+* -1 when the variable does not exist and -2 if the value is not defined in the enum and -3 if the operation or server index is not found
+*/
+int {{classname}}::setDefaultServerValue(int serverIndex, const std::string &operation, const std::string &variable, const std::string &value) {
+    auto it = _serverConfigs.find(operation);
+    if (it != _serverConfigs.end() && serverIndex < it->second.size()) {
+        auto l_front = _serverConfigs.find(operation)->second.begin();
+        std::next(l_front, serverIndex);
+        return l_front->setDefaultValue(variable,value);
+    }
+    return -3;
+}
+void {{classname}}::setServerIndex(const std::string &operation, int serverIndex) {
+    if (_serverIndices.count(operation) && serverIndex < _serverConfigs.find(operation)->second.size()) {
+        _serverIndices[operation] = serverIndex;
+    }
+}
+
+void {{classname}}::setApiKey(const std::string &apiKeyName, const std::string &apiKey) {
+    _apiKeys.insert(std::make_pair(apiKeyName, apiKey));
+}
+
+void {{classname}}::setBearerToken(const std::string &token) {
+    _bearerToken = token;
+}
+
+void {{classname}}::setUsername(const std::string &username) {
+    _username = username;
+}
+
+void {{classname}}::setPassword(const std::string &password) {
+    _password = password;
+}
+
+
+void {{classname}}::setTimeOut(const int timeOut) {
+    _timeOut = timeOut;
+}
+
+void {{classname}}::setWorkingDirectory(const std::string &path) {
+    _workingDirectory = path;
+}
+
+void {{classname}}::setNetworkAccessManager(Poco::Net::HTTPClientSession* manager) {
+    _manager = manager;
+}
+
+/**
+    * Appends a new ServerConfiguration to the config map for a specific operation.
+    * @param operation The id to the target operation.
+    * @param url A string that contains the URL of the server
+    * @param description A String that describes the server
+    * @param variables A map between a variable name and its value. The value is used for substitution in the server's URL template.
+    * returns the index of the new server config on success and -1 if the operation is not found
+    */
+int {{classname}}::addServerConfiguration(const std::string &operation, const Poco::URI &url, const std::string &description, const std::map<std::string, {{prefix}}ServerVariable> &variables) {
+    variables.find(operation)->second;
+    if (_serverConfigs.count(operation)) {
+        std::list<{{prefix}}ServerConfiguration> a = _serverConfigs.find(operation)->second;
+        a.emplace_back({{prefix}}ServerConfiguration(
+        url,
+        description,
+        variables));
+        return _serverConfigs[operation].size()-1;
+    } else {
+        return -1;
+    }
+}
+
+/**
+    * Appends a new ServerConfiguration to the config map for a all operations and sets the index to that server.
+    * @param url A string that contains the URL of the server
+    * @param description A String that describes the server
+    * @param variables A map between a variable name and its value. The value is used for substitution in the server's URL template.
+    */
+void {{classname}}::setNewServerForAllOperations(const Poco::URI &url, const std::string &description, const std::map<std::string, {{prefix}}ServerVariable> &variables) {
+    for (auto &e : _serverIndices) {
+        setServerIndex(e.first, addServerConfiguration(e.first, url, description, variables));
+    }
+
+}
+
+/**
+    * Appends a new ServerConfiguration to the config map for an operations and sets the index to that server.
+    * @param URL A string that contains the URL of the server
+    * @param description A String that describes the server
+    * @param variables A map between a variable name and its value. The value is used for substitution in the server's URL template.
+    */
+void {{classname}}::setNewServer(const std::string &operation, const Poco::URI &url, const std::string &description, const std::map<std::string, {{prefix}}ServerVariable> &variables) {
+    setServerIndex(operation, addServerConfiguration(operation, url, description, variables));
+}
+
+void {{classname}}::addHeaders(const std::string &key, const std::string &value) {
+    _defaultHeaders.insert({key, value});
+}
+
+void {{classname}}::enableRequestCompression() {
+    _isRequestCompressionEnabled = true;
+}
+
+void {{classname}}::enableResponseCompression() {
+    _isResponseCompressionEnabled = true;
+}
+
+
+std::string {{classname}}::getParamStylePrefix(const std::string &style) {
+    if (style == "matrix") {
+        return ";";
+    } else if (style == "label") {
+        return ".";
+    } else if (style == "form") {
+        return "&";
+    } else if (style == "simple") {
+        return "";
+    } else if (style == "spaceDelimited") {
+        return "&";
+    } else if (style == "pipeDelimited") {
+        return "&";
+    } else {
+        return "none";
+    }
+}
+
+std::string {{classname}}::getParamStyleSuffix(const std::string &style) {
+    if (style == "matrix") {
+        return "=";
+    } else if (style == "label") {
+        return "";
+    } else if (style == "form") {
+        return "=";
+    } else if (style == "simple") {
+        return "";
+    } else if (style == "spaceDelimited") {
+        return "=";
+    } else if (style == "pipeDelimited") {
+        return "=";
+    } else {
+        return "none";
+    }
+}
+
+std::string {{classname}}::getParamStyleDelimiter(const std::string &style, const std::string &name, bool isExplode) {
+
+    if (style == "matrix") {
+        return (isExplode) ? ";" + name + "=" : ",";
+
+    } else if (style == "label") {
+        return (isExplode) ? "." : ",";
+
+    } else if (style == "form") {
+        return (isExplode) ? "&" + name + "=" : ",";
+
+    } else if (style == "simple") {
+        return ",";
+    } else if (style == "spaceDelimited") {
+        return (isExplode) ? "&" + name + "=" : " ";
+
+    } else if (style == "pipeDelimited") {
+        return (isExplode) ? "&" + name + "=" : "|";
+
+    } else if (style == "deepObject") {
+        return (isExplode) ? "&" : "none";
+
+    } else {
+        return "none";
+    }
+}
+
+{{#operations}}
+{{#operation}}
+void {{classname}}::{{nickname}}({{#allParams}}{{#required}}const {{{dataType}}} &{{/required}}{{^required}}const ::{{cppNamespace}}::OptionalParam<{{{dataType}}}> &{{/required}}{{paramName}}{{^-last}}, {{/-last}}{{/allParams}}) {
+    int serverIndex = _serverIndices.at("{{nickname}}");
+    auto serverIt = std::next(_serverConfigs.at("{{nickname}}").begin(), serverIndex);
+    std::string serverURL = serverIt->URL();
+    {{#pathParams}}
+    std::string path = serverURL + "{{{path}}}";
+    std::string fullPath = Poco::format(path, {{paramName}});
+    {{/pathParams}}
+    {{^pathParams}}
+    std::string fullPath = serverURL + "{{{path}}}";
+    {{/pathParams}}
+    {{#hasBodyParams}}
+
+    Poco::Net::HTTPClientSession session(fullPath);
+    Poco::Net::HTTPRequest request("{{httpMethod}}", fullPath);
+    request.setContentType("application/json");
+    {{#bodyParams}}request.setContentLength({{paramName}}.asJson().length());{{/bodyParams}}
+    request.set("User-Agent", "{{classname}}");
+    request.set("Accept-Encoding", "gzip, deflate");
+    request.set("Accept", "application/json");
+
+    std::ostream& requestStream = session.sendRequest(request);
+    {{#bodyParams}}requestStream << {{paramName}}.asJson();{{/bodyParams}}
+
+    Poco::Net::HTTPResponse response;
+    std::istream& responseStream = session.receiveResponse(response);
+
+    std::string response_json;
+    Poco::StreamCopier::copyToString(responseStream, response_json);
+
+    {{/hasBodyParams}}
+
+    {{#hasQueryParams}}
+    std::string queryPrefix, querySuffix, queryDelimiter, queryStyle;
+    {{/hasQueryParams}}
+    {{#queryParams}}
+    {{^required}}if ({{paramName}}.hasValue()){{/required}}
+    {
+        queryStyle = "{{style}}";
+        if (queryStyle == "")
+            queryStyle = "form";
+        queryPrefix = getParamStylePrefix(queryStyle);
+        querySuffix = getParamStyleSuffix(queryStyle);
+        queryDelimiter = getParamStyleDelimiter(queryStyle, "{{baseName}}", {{isExplode}});
+        {{^collectionFormat}}
+        if (fullPath.find("?") != std::string::npos)
+            fullPath.append(queryPrefix);
+        else
+            fullPath.append("?");
+        std::string paramString = (queryStyle == "form" && {{isExplode}}) ? "" : (queryStyle == "form" && !({{isExplode}})) ? "{{baseName}}"+querySuffix : "";
+        {{^required}}
+        Poco::JSON::Object::Ptr parameter = new Poco::JSON::Object();
+        parameter->set("{{paramName}}", {{paramName}}.value());
+        {{/required}}
+        {{#required}}
+        Poco::JSON::Array array;
+        for(const auto& {{paramName}}Value : {{paramName}}) {
+            array.add({{paramName}}Value);
+        }
+        Poco::JSON::Object::Ptr parameter = new Poco::JSON::Object();
+        parameter->set("{{paramName}}", array);
+        {{/required}}
+        int count = 0;
+        for(auto it = parameter.get()->begin(); it != parameter.get()->end(); it++) {
+            if (count > 0) {
+                queryDelimiter =  ((queryStyle == "form" || queryStyle == "deepObject") && {{isExplode}}) ? "&" : getParamStyleDelimiter(queryStyle, it->first, {{isExplode}});
+                paramString.append(queryDelimiter);
+            }
+            std::string key = it->first;
+            Poco::Dynamic::Var value = it->second;
+
+            paramString.append(key + "=" + value.toString());
+            count++;
+        }
+            fullPath.append(paramString);
+    }
+
+    {{/collectionFormat}}
+    {{#collectionFormat}}
+        if (fullPath.find("?") != std::string::npos)
+            fullPath.append(queryPrefix);
+        else
+            fullPath.append("?");
+        std::string paramString = (queryStyle == "form" && {{isExplode}}) ? "" : (queryStyle == "form" && !({{isExplode}})) ? "{{baseName}}"+querySuffix : "";
+        {{^required}}
+            Poco::JSON::Object::Ptr parameter = new Poco::JSON::Object();
+            parameter->set("{{paramName}}", {{paramName}}.value());
+        {{/required}}
+        {{#required}}
+        Poco::JSON::Array array;
+        for(const auto& {{paramName}}Value : {{paramName}}) {
+            array.add({{paramName}}Value);
+        }
+        Poco::JSON::Object::Ptr parameter = new Poco::JSON::Object();
+        parameter->set("{{paramName}}", array);
+        {{/required}}
+        int count = 0;
+        for(auto it = parameter.get()->begin(); it != parameter.get()->end(); it++) {
+            if (count > 0) {
+                queryDelimiter =  ((queryStyle == "form" || queryStyle == "deepObject") && {{isExplode}}) ? "&" : getParamStyleDelimiter(queryStyle, it->first, {{isExplode}});
+                paramString.append(queryDelimiter);
+            }
+            std::string key = it->first;
+            Poco::Dynamic::Var value = it->second;
+
+            paramString.append(key + "=" + value.toString());
+            count++;
+            }
+            fullPath.append(paramString);
+            }
+        {{/collectionFormat}}
+    {{/queryParams}}
+    {{^hasBodyParams}}
+    Poco::Net::HTTPRequest request("{{httpMethod}}", fullPath);
+    Poco::Net::HTMLForm form;
+    form.prepareSubmit(request);
+    Poco::Net::HTTPClientSession session(fullPath);
+    session.sendRequest(request);
+    Poco::Net::HTTPResponse response;
+    std::istream& rs = session.receiveResponse(response);
+    std::string response_json;
+    Poco::StreamCopier::copyToString(rs, response_json);
+    {{/hasBodyParams}}
+    if(response.getStatus() == Poco::Net::HTTPResponse::HTTP_OK) {
+        Poco::JSON::Parser parser;
+        Poco::Dynamic::Var result = parser.parse(response_json);
+        std::cout << result.toString() << std::endl;
+    } else {
+        std::cerr << "Error: " << response.getReason() << std::endl;
+    }
+}
+
+
+{{/operation}}
+{{/operations}}
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}

@@ -1,0 +1,441 @@
+{{>licenseInfo}}
+#include <Poco/Debugger.h>
+#include <Poco/DateTimeParser.h>
+#include <Poco/JSON/Object.h>
+#include "Poco/Timestamp.h"
+#include "Poco/DateTime.h"
+#include <Poco/LocalDateTime.h>
+#include <Poco/Base64Encoder.h>
+#include <Poco/Base64Decoder.h>
+#include "{{prefix}}Helpers.h"
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+class {{prefix}}SerializerSettings {
+public:
+    struct CustomDateTimeFormat{
+        bool isStringSet = false;
+        std::string formatString;
+        bool isEnumSet = false;
+        Poco::DateTimeFormatter formatEnum;
+    };
+
+    static CustomDateTimeFormat getCustomDateTimeFormat() {
+        return getInstance()->customDateTimeFormat;
+    }
+
+    static void setDateTimeFormatString(const std::string &dtFormat){
+        getInstance()->customDateTimeFormat.isStringSet = true;
+        getInstance()->customDateTimeFormat.isEnumSet = false;
+        getInstance()->customDateTimeFormat.formatString = dtFormat;
+    }
+
+    static void setDateTimeFormatEnum(const Poco::DateTimeFormatter &dtFormat){
+        getInstance()->customDateTimeFormat.isEnumSet = true;
+        getInstance()->customDateTimeFormat.isStringSet = false;
+        getInstance()->customDateTimeFormat.formatEnum = dtFormat;
+    }
+
+    static {{prefix}}SerializerSettings *getInstance(){
+        if(instance == nullptr){
+            instance = new {{prefix}}SerializerSettings();
+        }
+        return instance;
+    }
+
+private:
+    explicit {{prefix}}SerializerSettings(){
+        instance = this;
+        customDateTimeFormat.isStringSet = false;
+        customDateTimeFormat.isEnumSet = false;
+    }
+    static {{prefix}}SerializerSettings *instance;
+    CustomDateTimeFormat customDateTimeFormat;
+};
+
+{{prefix}}SerializerSettings * {{prefix}}SerializerSettings::instance = nullptr;
+
+bool setDateTimeFormat(const std::string &dateTimeFormat){
+    bool success = false;
+    try {
+        Poco::DateTimeFormatter::format(Poco::LocalDateTime(), dateTimeFormat);
+        success = true;
+    {{prefix}}SerializerSettings::setDateTimeFormatString(dateTimeFormat);
+    } catch (Poco::SyntaxException& e) {
+        success = false;
+    }
+    return success;
+}
+
+std::string toStringValue(const std::string &value) {
+    return value;
+}
+
+std::string toStringValue(const Poco::DateTime &value) {
+    std::string dateTimeFormat = {{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().formatString;
+    if(dateTimeFormat.empty()) {
+        dateTimeFormat = Poco::DateTimeFormat::ISO8601_FORMAT;
+    }
+    return Poco::DateTimeFormatter::format(value, dateTimeFormat);
+}
+
+std::string toStringValue(const std::vector<unsigned char> &value) {
+    return std::string(value.begin(), value.end());
+}
+
+std::string toStringValue(const Poco::Int32 &value) {
+    return Poco::NumberFormatter::format(value);
+}
+
+std::string toStringValue(const Poco::Int64 &value) {
+    return Poco::NumberFormatter::format(value);
+}
+
+std::string toStringValue(const bool &value) {
+    return std::string(value ? "true" : "false");
+}
+
+std::string toStringValue(const float &value) {
+    return std::to_string(value);
+}
+
+std::string toStringValue(const double &value) {
+    return std::to_string(value);
+}
+
+std::string toStringValue(const {{prefix}}Object &value) {
+    return value.asJson();
+}
+
+std::string toStringValue(const {{prefix}}Enum &value) {
+    return value.asJson();
+}
+
+std::string toStringValue(const {{prefix}}HttpFileElement &value) {
+    return value.asJson();
+}
+
+Poco::Dynamic::Var fromJsonValue(const std::string &value) {
+    return Poco::Dynamic::Var(value);
+}
+
+Poco::DateTime toJsonValue(const Poco::Dynamic::Var &value) {
+    std::string value_str = value.convert<std::string>();
+    int timeZoneDiff;
+    if ({{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().isStringSet) {
+        std::string format = {{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().formatString;
+        Poco::DateTime dateTime;
+
+        Poco::DateTimeParser::parse(format, value_str, dateTime, timeZoneDiff);
+
+        return dateTime;
+    }
+
+    if ({{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().isEnumSet) {
+        Poco::DateTime dateTime;
+
+        Poco::DateTimeParser::parse(value_str, dateTime, timeZoneDiff);
+
+        return dateTime;
+    }
+    std::string format = Poco::DateTimeFormat::ISO8601_FORMAT;
+    Poco::DateTime dateTime;
+
+    Poco::DateTimeParser::parse(format, value_str, dateTime, timeZoneDiff);
+
+    return dateTime;
+}
+
+Poco::Dynamic::Var toJsonValue(const std::vector<unsigned char> &value) {
+    std::ostringstream output;
+    Poco::Base64Encoder encoder(output);
+    encoder.write((const char*)value.data(), value.size());
+    encoder.close();
+    return output.str();
+}
+
+Poco::Dynamic::Var toJsonValue(const Poco::DateTime &value) {
+    Poco::DateTime dateTime(value.year(), value.month(), value.day());
+    return Poco::DateTimeFormatter::format(dateTime, Poco::DateTimeFormat::ISO8601_FORMAT);
+
+}
+
+Poco::Dynamic::Var toJsonValue(const Poco::Int32 &value) {
+    return value;
+}
+
+Poco::Dynamic::Var toJsonValue(const Poco::Int64 &value) {
+    return value;
+}
+
+Poco::Dynamic::Var toJsonValue(const bool &value) {
+    return value;
+}
+
+Poco::Dynamic::Var toJsonValue(const float &value) {
+    return value;
+}
+
+Poco::Dynamic::Var toJsonValue(const double &value) {
+    return value;
+}
+
+Poco::Dynamic::Var toJsonValue(const {{prefix}}Object &value) {
+    return Poco::Dynamic::Var(value);
+}
+
+Poco::Dynamic::Var toJsonValue(const {{prefix}}Enum &value) {
+    return Poco::Dynamic::Var(value);
+}
+
+Poco::Dynamic::Var toJsonValue(const {{prefix}}HttpFileElement &value) {
+    return value.asJsonValue();
+}
+
+
+bool fromStringValue(const std::string &inStr, std::string &value) {
+    value.clear();
+    value.append(inStr);
+    return !inStr.empty();
+}
+
+bool fromStringValue(const std::string &inStr, Poco::DateTime &value) {
+    if (inStr.empty()) {
+        return false;
+    } else {
+        Poco::DateTime dateTime;
+        int timeZoneDiff;
+        bool parseValid;
+        if ({{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().isStringSet) {
+            std::string format = {{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().formatString;
+            parseValid = Poco::DateTimeParser::tryParse(format, inStr, dateTime, timeZoneDiff);
+        } else if ({{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().isEnumSet) {
+            parseValid = Poco::DateTimeParser::tryParse(inStr, dateTime, timeZoneDiff);
+        } else {
+            std::string format = Poco::DateTimeFormat::ISO8601_FORMAT;
+            parseValid = Poco::DateTimeParser::tryParse(format, inStr, dateTime, timeZoneDiff);
+        }
+
+        if (parseValid) {
+            value = dateTime;
+        } else {
+            std::cerr << "DateTime is invalid" << std::endl;
+        }
+        return parseValid;
+    }
+}
+
+bool fromStringValue(const std::string &inStr, std::vector<unsigned char> &value) {
+    if (inStr.empty()) {
+        return false;
+    } else {
+        value.clear();
+        value.insert(value.end(), inStr.begin(), inStr.end());
+        return true;
+    }
+}
+
+
+bool fromStringValue(const std::string &inStr, Poco::Int32 &value) {
+    try {
+        value = Poco::NumberParser::parse(inStr);
+        return true;
+    } catch (const Poco::Exception& e) {
+        std::cerr << "Error while parsing integer: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool fromStringValue(const std::string &inStr, Poco::Int64 &value) {
+    try {
+        value = Poco::NumberParser::parse64(inStr);
+        return true;
+    } catch (const Poco::Exception& e) {
+        std::cerr << "Error while parsing integer: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool fromStringValue(const std::string &inStr, bool &value) {
+    try {
+        value = Poco::NumberParser::parseBool(inStr);
+        return true;
+    } catch (const Poco::Exception& e) {
+        std::cerr << "Error while parsing bool: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool fromStringValue(const std::string &inStr, float &value) {
+    try {
+        value = Poco::NumberParser::parseFloat(inStr);
+        return true;
+    } catch (const Poco::Exception& e) {
+        std::cerr << "Error while parsing float: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool fromStringValue(const std::string &inStr, double &value) {
+    try {
+        value = Poco::NumberParser::parseFloat(inStr);
+        return true;
+    } catch (const Poco::Exception& e) {
+        std::cerr << "Error while parsing double: " << e.what() << std::endl;
+        return false;
+    }
+}
+
+bool fromStringValue(const std::string &inStr, {{prefix}}Object &value){
+    try{
+        Poco::JSON::Parser parser;
+        Poco::Dynamic::Var parsedJson = parser.parse(inStr);
+        Poco::JSON::Object::Ptr jsonObject = parsedJson.extract<Poco::JSON::Object::Ptr>();
+        value.fromJson(inStr);
+        return true;
+    }
+    catch (Poco::Exception&){
+        return false;
+    }
+}
+
+bool fromStringValue(const std::string &inStr, {{prefix}}Enum &value) {
+    value.fromJson(inStr);
+    return true;
+}
+
+bool fromStringValue(const std::string &inStr, {{prefix}}HttpFileElement &value) {
+    return value.fromStringValue(inStr);
+}
+
+bool fromJsonValue(std::string& value, const Poco::Dynamic::Var& jval){
+    if (!jval.isEmpty()) {
+        if (jval.isString()) {
+            value = jval.convert<std::string>();
+        } else if (jval.isBoolean()) {
+            value = jval.convert<bool>() ? "true" : "false";
+        } else if (jval.isNumeric()) {
+            value = Poco::NumberFormatter::format(jval.convert<double>());
+        } else {
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool fromJsonValue(Poco::DateTime &value, const Poco::Dynamic::Var &jval) {
+    if (!jval.isEmpty() && jval.isString()) {
+
+        std::string dateTimeString = jval.convert<std::string>();
+        int timeZoneDiff;
+
+        if ({{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().isStringSet) {
+
+            std::string format = {{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().formatString;
+            Poco::DateTimeParser::parse(format, dateTimeString, value, timeZoneDiff);
+
+        } else if ({{prefix}}SerializerSettings::getInstance()->getCustomDateTimeFormat().isEnumSet) {
+
+            Poco::DateTimeParser::parse(dateTimeString, value, timeZoneDiff); 
+
+        } else {
+            std::string format = Poco::DateTimeFormat::ISO8601_FORMAT;
+            Poco::DateTimeParser::parse(format, dateTimeString, value, timeZoneDiff);
+        }
+        return true;
+    }
+    return false;
+}
+
+bool fromJsonValue(std::vector<unsigned char> &value, const Poco::Dynamic::Var &jval) {
+    if (!jval.isEmpty() && jval.isString()) {
+        
+        std::string base64String = jval.convert<std::string>();
+        std::vector<unsigned char> base64(base64String.begin(), base64String.end());
+        
+        std::istringstream istr(base64String);
+        Poco::Base64Decoder decoder(istr);
+        decoder >> std::noskipws;
+        std::copy(std::istream_iterator<unsigned char>(decoder), std::istream_iterator<unsigned char>(), std::back_inserter(value));
+        
+        return true;
+    }
+    return false;
+}
+
+bool fromJsonValue(Poco::Int32 &value, const Poco::Dynamic::Var &jval) {
+    if (!jval.isEmpty() && !jval.isStruct() && !jval.isArray()) {
+        value = Poco::NumberParser::parse(jval);
+        return true;
+    }
+    return false;
+}
+
+bool fromJsonValue(Poco::Int64 &value, const Poco::Dynamic::Var &jval) {
+    if (!jval.isEmpty() && !jval.isStruct() && !jval.isArray()) {
+        value = Poco::NumberParser::parse64(jval);
+        return true;
+    }
+    return false;
+}
+
+bool fromJsonValue(bool &value, const Poco::Dynamic::Var &jval) {
+
+    if (jval.isBoolean()) {
+        value = Poco::NumberParser::parseBool(jval);
+        return true;
+    }
+    return false;
+}
+
+bool fromJsonValue(float &value, const Poco::JSON::Object &jval) {
+    bool ok = true;
+    if (jval.has("value")) {
+        value = jval.get("value").convert<float>();
+    } else {
+        ok = false;
+    }
+    return ok;
+}
+
+bool fromJsonValue(double &value, const Poco::JSON::Object &jval) {
+    bool ok = true;
+    if (jval.has("value")) {
+        value = jval.get("value").convert<double>();
+    } else {
+        ok = false;
+    }
+    return ok;
+}
+
+bool fromJsonValue({{prefix}}Object &value, const Poco::JSON::Object::Ptr &jval) {
+    bool ok = true;
+    try {
+        value.fromJsonObject(jval);
+    }
+    catch (Poco::Exception &e) {
+        ok = false;
+    }
+    return ok;
+}
+
+bool fromJsonValue({{prefix}}Enum &value, const Poco::JSON::Object::Ptr &jval) {
+    value.fromJsonValue(jval);
+    return true;
+}
+
+bool fromJsonValue({{prefix}}HttpFileElement &value, const Poco::JSON::Object &jval) {
+    return value.fromJsonValue(jval);
+}
+
+bool fromJsonValue(Poco::JSON::Object &value, const Poco::JSON::Object &jval) {
+    value = jval;
+    return true;
+}
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}

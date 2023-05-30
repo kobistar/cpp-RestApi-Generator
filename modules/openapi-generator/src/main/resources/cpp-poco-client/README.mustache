@@ -1,0 +1,140 @@
+# C++ Poco API client
+
+#1.	Čo je openAPI Generátor?
+OpenAPI generátor je open-source nástroj pre automatické generovanie klientskych API (generovanie SDK), serverových stubov, dokumentácie, testov a konfigurácie podľa špecifikácie OpenAPI.
+Podporuje mnoho rôznych programovacích jazykov a rámcov, vrátane Java, JavaScript, Python, C++, Ruby a C#. Generovaný kód je založený na OpenAPI specification (predtým známy ako Swagger specification) . OpenAPI specification je formát pre popis RESTful API, ktorý poskytuje štandardizovaný spôsob, ako popísať endpointy, metódy, parametre a odpovede API.
+OpenAPI specification je v podstate YAML alebo JSON súbor, ktorý obsahuje informácie o endpointoch, metódach, parametroch, odpovediach atď. OpenAPI Generator číta túto definíciu OpenAPI a na základe nej generuje kód pre rôzne jazyky a platformy.
+OpenAPI generátor môže byť spustený cez príkazový riadok, ako Maven plugin alebo ako samostatná Java aplikácia.
+
+#2.	Na čo slúži /Aký je jeho účel?
+Použitím OpenAPI Generatora môžu vývojári ušetriť čas a úsilie tým, že nemusia ručne písať kód na interakciu s API a môžu sa namiesto toho napríklad sústrediť na implementáciu obchodnej logiky svojej aplikácie.
+Naviac, generovaný kód je založený na široko používaných knižniciach a rámcoch, čo môže pomôcť zabezpečiť kompatibilitu a jednoduchosť používania pre vývojárov. Týmto spôsobom umožňuje rýchle a jednoduché vytváranie kódu pre rôzne jazyky a platformy a uľahčuje implementáciu a údržbu API.
+
+#3.	Spôsoby spustenie OpenApi Generátor
+Existuje niekoľko spôsobov, ako používať OpenAPI Generator, v závislosti od vašich konkrétnych potrieb a nastavenia.
+
+##1.	Príkazový riadok: môžete nainštalovať nástroj OpenAPI Generator na príkazovom riadku na svojom počítači a použiť ho na generovanie kódu pre svoje API. Budete potrebovať poskytnúť nástroju umiestnenie svojho súboru OpenAPI špecifikácie a špecifikovať jazyk a rámec, v ktorom chcete, aby bol kód generovaný.
+
+##2.	Maven plugin: Ak používate Maven ako svoj nástroj na zostavovanie, môžete použiť Maven plugin OpenAPI Generator na generovanie kódu ako súčasť vášho procesu zostavovania. Budete musieť pridať plugin do svojho súboru pom.xml a nakonfigurovať ho tak, aby ukazoval na súbor OpenAPI špecifikácie.
+
+##3.	Samostatná Java aplikácia: môžete tiež spustiť OpenAPI Generator ako samostatnú Java aplikáciu. Budete potrebovať mať nainštalovanú Javu na svojom počítači a poskytnúť umiestnenie svojho súboru OpenAPI Specifikácie a ďalšie možnosti konfigurácie ako argumenty príkazového riadku.
+
+##4.	Online: tiež môžete použiť online verziu OpenAPI generátora z webovej stránky https://openapi-generator.tech/
+Nezávisle od metódy, ktorú si vyberiete, budete potrebovať súbor OpenAPI špecifikácie pre svoje API. Je to súbor JSON alebo YAML, ktorý popisuje koncové body, formáty požiadaviek a odpovedí a ďalšie detaily vášho API. Ak máte tento súbor, môžete použiť OpenAPI Generator na generovanie kódu pre interakciu s vaším API v jazyku a rámci vašej voľby.
+
+#4.	Prečo je užitočné použiť OpenAPI Generator
+Rýchla vývoj API: OpenAPI Generator môže pomôcť zrýchliť vývojový proces API automatickým generovaním kódu pre klientsku a serverovú stranu. Týmto spôsobom môžu vývojári ušetriť čas a úsilie, môžu sa sústrediť na obchodnú logiku svojej aplikácie.
+
+- **Konzistencia a udržateľnosť**: Generovaný kód je založený na široko používaných knižniciach a rámcoch, čo môže pomôcť zabezpečiť konzistenciu a udržateľnosť medzi rôznymi jazykmi a rámcami.
+
+- **Dokumentácia API**: OpenAPI Generator tiež môže generovať dokumentáciu pre API, čo uľahčuje vývojárom pochopiť, ako používať API a pre koncových používateľov pochopiť dostupnú funkcionalitu.
+
+- **Testovanie**: Generované serverové stuby sa dajú použiť na testovanie a mock servery, čo môže pomôcť vývojárom rýchlo testovať ich aplikáciu bez potreby skutočného servera.
+
+- **Reuse kódu**: Generovaný kód sa dá ľahko použiť v rôznych projektoch, čo umožňuje vývojárom rýchlo implementovať API v rôznych jazykoch a rámcoch.
+
+- **Prispôsobenie**: OpenAPI Generator je navrhnutý tak, aby bol ľahko prispôsobiteľný a rozšíriteľný, čo umožňuje vývojárom prispôsobiť generovaný kód ich konkrétnym potrebám.
+Podpora viacerých jazykov a rámcov: OpenAPI Generator podporuje širokú škálu programovacích jazykov a rámcov, vrátane Java, JavaScript, Python, Ruby a C#. Týmto sa ľahko generuje kód, ktorý je kompatibilný so vašou existujúcou zostavou a vývojovým prostredím.
+
+- **Prispôsobiteľné šablóny**: OpenAPI Generator používa šablóny handlebars na generovanie kódu, čo uľahčuje prispôsobenie a rozšírenie generovaného kódu.
+
+- **Aktívna komunita**: OpenAPI Generator má aktívnu komunitu vývojárov, ktorí prispievajú do projektu, pridávajú nové funkcie a opravujú chyby.
+
+- **Mature projekt**: OpenAPI Generator je mature projekt, ktorý existuje už nejaký čas, čo znamená, že bol testovaný v boji a má preukázanú históriu spoľahlivosti.
+
+- **Integrácia**: OpenAPI Generator sa dá integrovať s inými nástrojmi ako Maven, Jenkins a Gradle, čo umožňuje generovanie kódu počas procesu buildu.
+
+- **Online verzia**: OpenAPI Generator má online verziu, ktorá môže generovať kód bez inštalácie na lokálnom stroji.
+
+Tieto funkcie robia z OpenAPI Generator silný a flexibilný nástroj na generovanie kódu pre prácu s API. Môže pomôcť vývojárom ušetriť čas a úsilie automatickým generovaním kódu na základe OpenAPI špecifikácie a je ľahké prispôsobiť a rozšíriť generovaný kód na splnenie konkrétnych potrieb.
+
+#5.	Cpp-poco-codegen
+Poco modul pre OpenAPI generátor, na ktorom sa pracovalo v rámci Tímového projektu generuje API C++ klienta s použitím knižníc Poco. Modul sa nevyvíjal na novo od základu, ale je to prepísaný qt modul OpenAPI generátora. Celú klientsku časť sa úspešne podarilo prepísať s použitím systémových a Poco knižníc. Generátor neumožňuje generovať serverovú časť API, takže pre otestovanie je ešte potrebné spustiť server.
+
+#6.	Čo je Poco?
+Poco je knižnica C++, ktorá poskytuje množstvo tried a funkcií pre rôzne úlohy ako napríklad prácu so sieťou, databázami, časom, spracovanie XML a JSON, atď. Táto knižnica sa zameriava na jednoduchosť, prehľadnosť a efektívnosť, a poskytuje modulárne a flexibilné riešenia pre rôzne potreby programovania. Poco je open-source projekt, je k dispozícii pod licenciou Boost Software License.
+Triedy v tejto knižnici sú navrhnuté tak, aby boli čo najviac nezávislé na konkrétnom frameworku alebo systéme, takže ich môžu používať rôzne aplikácie bez ohľadu na to, aký framework alebo platformu používajú.
+Poco knižnica síce poskytuje niektoré triedy pre prácu s webovými frameworkami ako napríklad Poco::Net::HTTPServer, ale tie sa dajú tiež použiť aj v iných aplikáciách bez závislosti na konkrétnom frameworku.
+Link na poco -> https://pocoproject.org/index.html
+
+#7.	Lokalne spustenie OpenAPi generátora
+1.	Najprv je potrebné si nainštalovať technológie, ktoré umožnia spustenie generátora ->
+
+-   **Java 8** (https://www.oracle.com/java/technologies/downloads/#java8-windows) OpenAPI Generator je napísaný v jazyku Java a preto je potrebné, aby bola java 8 nainštalovaná v počítači.
+
+-   **Apache Maven 3.3.4 alebo novší** (https://maven.apache.org/download.cgi)    OpenAPI Generator používa Maven ako nástroj na správu závislostí a automatizáciu procesu buildu. Maven slúži na automatizáciu procesu kompilácie, testovania a inštalácie aplikácie.
+
+2.	Následne sa stiahne GitHub repozitár generátora a to prostredníctvom príkazu ->
+
+    git clone https://github.com/OpenAPITools/openapi-generator.git
+
+3.	Keďže modul POCO ešte nebol pridaný do plnej verzie generátora tak je potrebné si ešte stiahnuť gitlab repozitár
+
+	git clone https://git.kpi.fei.tuke.sk/t-mov-projekt/cpp-restapi-generator
+
+4.	Stiahnutý gitlab repozitár stačí prekopírovať do repozitára OpenAPI generátora
+
+	xcopy cpp-restapi-generator openapi-generator /s /e /d
+
+5.	Po stiahnutí repozitára OpenAPI generátora sa následne pre vstup do adresára použije príkaz
+
+	cd openapi-generator
+
+6.	Keďže cieľom je vygenerovať API, ktoré budú používať POCO knižnicu je potrebné ju stiahnuť a nainštalovať ->
+
+	git clone -b master https://github.com/pocoproject/poco.git
+
+7.	Po stiahnutí POCO repozitára sa pre vstup do adresára použije príkaz ->
+
+	cd poco
+
+8.	Následne sa príkazom mkdir vytvorí adresár cmake-build kde sa bude POCO inštalovať ->
+
+	mkdir cmake-build
+
+9.	Príkazom cd sa vstúpi do novovytvoreného adresára
+
+	cd  cmake-build
+
+10.	Na to, aby sa úspešne knižnice POCO nainštalovali je potrebné spustiť príkaz ->
+
+	cmake ..
+
+    Tento príkaz vygeneruje a preloží súbory, podľa súboru CMakeLists.txt
+
+11.	Preložené súbory sa skompilujú a nainštalujú všetky poco knižnice príkazom
+
+	cmake –build .
+
+12.	Pre inštaláciu OpenAPI generátora a jeho závislostí sa zadá príkaz ->
+
+	mvn clean package
+
+    Tento príkaz je potrebné volať z root adresára openapi generátora
+
+13.	Pre vygenerovanie API, generátorom sa zadá príkaz ->
+
+    java -jar modules\openapi-generator-cli\target\openapi-generator-cli.jar generate -i https://raw.githubusercontent.com/openapitools/openapi-generator/master/modules/openapi-generator/src/test/resources/3_0/petstore.yaml -g cpp-poco-client -o c:\temp\cpp_api_client
+
+-   “**modules\openapi-generator-cli\target\openapi-generator-cli.jar**“ -> JAR súbor obsahuje program OpenAPI Generator CLI, ktorý sa používa na generovanie kódu
+-   "https://raw.githubusercontent.com/openapitools/openapi-generator/master/modules/openapi-generator/src/test/resources/3_0/petstore.yaml" -> vstupný konfiguračný súbor yaml, ktorý obsahuje všetky informácie o tom ako sa majú API vytvoriť
+-	“**cpp-poco-client**“ -> je názov generátora, ktorý sa má použiť
+-	**c:\temp\cpp_api_client** -> výstupný adresár pre vygenerované súbory
+
+14.	Po otvorení vygenerovaného projektu je potrebné ešte nastaviť cestu k nainštalovanému Poco v projekte. Postup platí pre Clion ->
+
+    Settings -> Build, Execution, Deployment -> CMake ->  Cashe variables -> Poco_DIR
+
+    Do časti  value sa doplní cesta k nainštalovanému poco ->
+
+    C:\poco\cmake-build\Poco
+
+15.	Po nastavení cesty k POCO knižniciam je potrebné otvoriť súbor ->
+
+    CMakeLists.txt -> a spustiť ho klikom na tlačidlo, ktoré sa zobrazí pri začiatku main
+
+    Týmto sa súbor skompiluje
+
+16.	Aby sa vygenerované API mohli vyskúšať, tak sa adresár client z vygenerovaného poco projektu prekopíruje do adresára C:\cpp-restapi-generator\samples\client\petstore\cpp-poco-example a to príkazom ->
+
+    xcopy C:\temp\cpp_api_client\client C:\cpp-restapi-generator\samples\client\petstore\cpp-poco-example\client /s /e /d

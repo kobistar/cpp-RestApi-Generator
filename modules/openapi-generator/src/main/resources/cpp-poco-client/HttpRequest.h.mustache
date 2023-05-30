@@ -1,0 +1,98 @@
+{{>licenseInfo}}
+/**
+ * Based on http://www.creativepulse.gr/en/blog/2014/restful-api-requests-using-qt-cpp-for-linux-mac-osx-ms-windows
+ * By Alex Stylianos
+ *
+ **/
+
+#ifndef {{prefix}}_HTTPREQUESTWORKER_H
+#define {{prefix}}_HTTPREQUESTWORKER_H
+
+#include <Poco/Net/HTTPClientSession.h>
+#include <Poco/Net/HTTPResponse.h>
+#include <Poco/Timer.h>
+#include <list>
+
+#include "{{prefix}}HttpFileElement.h"
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+enum {{prefix}}HttpRequestVarLayout {
+    NOT_SET,
+    ADDRESS,
+    URL_ENCODED,
+    MULTIPART
+};
+
+class {{prefix}}HttpRequestInput {
+
+public:
+    std::string url_str;
+    std::string http_method;
+    {{prefix}}HttpRequestVarLayout var_layout;
+    std::map<std::string, std::string> vars;
+    std::map<std::string, std::string> headers;
+    std::list<{{prefix}}HttpFileElement> files;
+    std::vector<unsigned char> request_body;
+
+    {{prefix}}HttpRequestInput();
+    {{prefix}}HttpRequestInput(std::string v_url_str, std::string v_http_method);
+    void initialize();
+    void add_var(std::string key, std::string value);
+    void add_file(std::string variable_name, std::string local_filename, std::string request_filename, std::string mime_type);
+};
+
+class {{prefix}}HttpRequestWorker{
+
+public:
+    explicit {{prefix}}HttpRequestWorker(void *parent = nullptr, Poco::Net::HTTPClientSession *manager = nullptr);
+    virtual ~{{prefix}}HttpRequestWorker();
+    OAIHttpRequestWorker(Poco::Net::HTTPClientSession*);
+
+    Poco::Net::HTTPResponse response;
+    Poco::Net::HTTPResponse::HTTPStatus error_type;
+    std::string error_str;
+    std::string response_str;
+
+    std::map<std::string, std::string> getResponseHeaders() const;
+    std::string http_attribute_encode(std::string attribute_name, std::string input);
+    void execute({{prefix}}HttpRequestInput *input);
+    void setTimeOut(int timeOutMs);
+    void setWorkingDirectory(const std::string &path);
+    {{prefix}}HttpFileElement getHttpFileElement(const std::string &fieldname = std::string());
+    std::vector<unsigned char> *getMultiPartField(const std::string &fieldname = std::string());
+    void setResponseCompressionEnabled(bool enable);
+    void setRequestCompressionEnabled(bool enable);
+    int  getHttpResponseCode() const;
+
+    void on_execution_finished({{prefix}}HttpRequestWorker *worker);
+
+private:
+    enum {{prefix}}CompressionType{
+        Zlib,
+        Gzip
+    };
+    Poco::Net::HTTPClientSession *manager;
+    std::map<std::string, std::string> headers;
+    std::map<std::string, {{prefix}}HttpFileElement> files;
+    std::map<std::string, std::vector<unsigned char> *> multiPartFields;
+    std::string workingDirectory;
+    Poco::Timer timeOutTimer;
+    bool isResponseCompressionEnabled;
+    bool isRequestCompressionEnabled;
+    int  httpResponseCode;
+
+    void on_reply_timeout(Poco::Net::HTTPResponse *reply, std::istream& rs);
+    void on_reply_finished(Poco::Net::HTTPResponse *reply, std::istream& rs);
+    void process_response(Poco::Net::HTTPResponse *reply, std::istream& rs);
+    std::vector<unsigned char> decompress(const std::vector<unsigned char>& data);
+    std::vector<unsigned char> compress(const std::vector<unsigned char>& input, int level, {{prefix}}CompressionType compressType);
+};
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}
+
+#endif // {{prefix}}_HTTPREQUESTWORKER_H

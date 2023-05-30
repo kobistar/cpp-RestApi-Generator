@@ -1,0 +1,263 @@
+{{>licenseInfo}}
+#ifndef {{prefix}}_HELPERS_H
+#define {{prefix}}_HELPERS_H
+
+#include <Poco/DateTimeParser.h>
+#include "{{prefix}}Enum.h"
+#include "{{prefix}}HttpFileElement.h"
+#include "{{prefix}}Object.h"
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+template <typename T>
+class OptionalParam {
+public:
+    T m_Value;
+    bool m_hasValue;
+public:
+    OptionalParam(){
+        m_hasValue = false;
+    }
+    OptionalParam(const T &val){
+        m_hasValue = true;
+        m_Value = val;
+    }
+    bool hasValue() const {
+        return m_hasValue;
+    }
+    T value() const{
+        return m_Value;
+    }
+};
+
+bool setDateTimeFormat(const std::string &format);
+bool setDateTimeFormat(const Poco::DateTimeParser &format);
+
+template <typename T>
+std::string toStringValue(const std::list<T> &val);
+
+template <typename T>
+std::string toStringValue(const std::set<T> &val);
+
+template <typename T>
+bool fromStringValue(const std::list<std::string> &inStr, std::list<T> &val);
+
+template <typename T>
+bool fromStringValue(const std::set<std::string> &inStr, std::list<T> &val);
+
+template <typename T>
+bool fromStringValue(const std::map<std::string, std::string> &inStr, std::map<std::string, T> &val);
+
+template <typename T>
+Poco::Dynamic::Var toJsonValue(const std::list<T> &val);
+
+template <typename T>
+Poco::Dynamic::Var toJsonValue(const std::set<T> &val);
+
+template <typename T>
+Poco::Dynamic::Var toJsonValue(const std::map<std::string, T> &val);
+
+template <typename T>
+{{!Poco::Dynamic::Var}}
+bool fromJsonValue(std::list<T> &val, const Poco::Dynamic::Var &jval);
+
+template <typename T>
+bool fromJsonValue(std::set<T> &val, const Poco::Dynamic::Var &jval);
+
+template <typename T>
+bool fromJsonValue(std::map<std::string, T> &val, const Poco::Dynamic::Var &jval);
+
+std::string toStringValue(const std::string &value);
+std::string toStringValue(const Poco::DateTime &value);
+std::string toStringValue(const std::vector<unsigned char> &value);
+std::string toStringValue(const Poco::DateTime &value);
+std::string toStringValue(const Poco::Int32 &value);
+std::string toStringValue(const Poco::Int64 &value);
+std::string toStringValue(const bool &value);
+std::string toStringValue(const float &value);
+std::string toStringValue(const double &value);
+std::string toStringValue(const {{prefix}}Object &value);
+std::string toStringValue(const {{prefix}}Enum &value);
+std::string toStringValue(const {{prefix}}HttpFileElement &value);
+
+
+template <typename T>
+std::string toStringValue(const std::list<T> &val) {
+    std::string strArray;
+    for (const auto &item : val) {
+        strArray.append(toStringValue(item) + ",");
+    }
+    if (val.count() > 0) {
+        strArray.erase(strArray.length() - 1);
+    }
+    return strArray;
+}
+
+template <typename T>
+std::string toStringValue(const std::set<T> &val) {
+    std::string strArray;
+    for (const auto &item : val) {
+        strArray.append(toStringValue(item) + ",");
+    }
+    if (val.count() > 0) {
+        strArray.erase(strArray.length() - 1);
+    }
+    return strArray;
+}
+
+Poco::Dynamic::Var toJsonValue(const std::string &value);
+Poco::Dynamic::Var toJsonValue(const Poco::DateTime &value);
+Poco::Dynamic::Var toJsonValue(const std::vector<unsigned char> &value);
+Poco::Dynamic::Var toJsonValue(const Poco::DateTime &value);
+Poco::Dynamic::Var toJsonValue(const Poco::Int32 &value);
+Poco::Dynamic::Var toJsonValue(const Poco::Int64 &value);
+Poco::Dynamic::Var toJsonValue(const bool &value);
+Poco::Dynamic::Var toJsonValue(const float &value);
+Poco::Dynamic::Var toJsonValue(const double &value);
+Poco::Dynamic::Var toJsonValue(const {{prefix}}Object &value);
+Poco::Dynamic::Var toJsonValue(const {{prefix}}Enum &value);
+Poco::Dynamic::Var toJsonValue(const {{prefix}}HttpFileElement &value);
+Poco::DateTime toJsonValue(const Poco::Dynamic::Var &value);
+
+template <typename T>
+Poco::Dynamic::Var toJsonValue(const std::list<T> &val) {
+    Poco::JSON::Array jArray;
+    for (const auto &item : val) {
+        jArray.add(toJsonValue(item));
+    }
+    return jArray;
+}
+
+template <typename T>
+Poco::Dynamic::Var toJsonValue(const std::set<T> &val) {
+    Poco::JSON::Array jArray;
+    for (const auto &item : val) {
+        jArray.add(toJsonValue(item));
+    }
+    return jArray;
+}
+
+template <typename T>
+Poco::Dynamic::Var toJsonValue(const std::map<std::string, T> &val) {
+    Poco::DynamicStruct jObject;
+    for (const auto &item : val) {
+        jObject[item.first] = toJsonValue(item.second);
+    }
+    return jObject;
+}
+
+bool fromStringValue(const std::string &inStr, std::string &value);
+bool fromStringValue(const std::string &inStr, Poco::DateTime &value);
+bool fromStringValue(const std::string &inStr, std::vector<unsigned char> &value);
+bool fromStringValue(const std::string &inStr, Poco::DateTime &value);
+bool fromStringValue(const std::string &inStr, Poco::Int32 &value);
+bool fromStringValue(const std::string &inStr, Poco::Int64 &value);
+bool fromStringValue(const std::string &inStr, bool &value);
+bool fromStringValue(const std::string &inStr, float &value);
+bool fromStringValue(const std::string &inStr, double &value);
+bool fromStringValue(const std::string &inStr, {{prefix}}Object &value);
+bool fromStringValue(const std::string &inStr, {{prefix}}Enum &value);
+bool fromStringValue(const std::string &inStr, {{prefix}}HttpFileElement &value);
+
+template <typename T>
+bool fromStringValue(const std::list<std::string> &inStr, std::list<T> &val) {
+    bool ok = (inStr.size() > 0);
+    for (const auto &item : inStr) {
+        T itemVal;
+        ok &= fromStringValue(item, itemVal);
+        val.push_back(itemVal);
+    }
+    return ok;
+}
+
+template <typename T>
+bool fromStringValue(const std::set<std::string> &inStr, std::list<T> &val) {
+    bool ok = (inStr.size() > 0);
+    for (const auto &item : inStr) {
+        T itemVal;
+        ok &= fromStringValue(item, itemVal);
+        val.push_back(itemVal);
+    }
+    return ok;
+}
+
+template <typename T>
+bool fromStringValue(const std::map<std::string, std::string> &inStr, std::map<std::string, T> &val) {
+    bool ok = (inStr.size() > 0);
+    for (const auto &itemkey : inStr) {
+        T itemVal;
+        ok &= fromStringValue(itemkey.second, itemVal);
+        val.insert(std::make_pair(itemkey.first, itemVal));
+    }
+    return ok;
+}
+
+bool fromJsonValue(std::string &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue(Poco::DateTime &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue(std::vector<unsigned char> &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue(Poco::DateTime &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue(Poco::Int32 &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue(Poco::Int64 &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue(bool &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue(float &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue(double &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue({{prefix}}Object &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue({{prefix}}Enum &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue({{prefix}}HttpFileElement &value, const Poco::Dynamic::Var &jval);
+bool fromJsonValue(Poco::Dynamic::Var &value, const Poco::Dynamic::Var &jval);
+
+template <typename T>
+bool fromJsonValue(std::list<T> &val, const Poco::Dynamic::Var &jval) {
+    bool ok = true;
+    if (jval.isArray()) {
+        for (const auto jitem : jval) {
+            T item;
+            ok &= fromJsonValue(item, jitem);
+            val.push_back(item);
+        }
+    } else {
+        ok = false;
+    }
+    return ok;
+}
+
+template <typename T>
+bool fromJsonValue(std::set<T> &val, const Poco::Dynamic::Var &jval) {
+    bool ok = true;
+    if (jval.isArray()) {
+        for (const auto jitem : jval) {
+            T item;
+            ok &= fromJsonValue(item, jitem);
+            val.insert(item);
+        }
+    } else {
+        ok = false;
+    }
+    return ok;
+}
+
+template <typename T>
+bool fromJsonValue(std::map<std::string, T> &val, const Poco::Dynamic::Var &jval) {
+    bool ok = true;
+    if (jval.isStruct()) {
+        Poco::JSON::Object::Ptr obj = jval.extract<Poco::JSON::Object::Ptr>();
+        if (obj->size() > 0) {
+            for (const auto &itemkey : obj->getNames()) {
+                T itemVal;
+                ok &= fromJsonValue(itemVal, obj->get(itemkey));
+                val.insert(std::make_pair(itemkey, itemVal));
+            }
+        }
+    } else {
+        ok = false;
+    }
+    return ok;
+}
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}
+
+#endif // {{prefix}}_HELPERS_H

@@ -1,0 +1,96 @@
+{{>licenseInfo}}
+#ifndef {{prefix}}_{{classname}}_H
+#define {{prefix}}_{{classname}}_H
+
+#include "{{prefix}}Helpers.h"
+#include "{{prefix}}HttpRequest.h"
+#include "{{prefix}}ServerConfiguration.h"
+
+{{#imports}}{{{import}}}
+{{/imports}}
+
+#include <string>
+#include <vector>
+#include <list>
+#include <map>
+#include <Poco/Net/HTTPClientSession.h>
+
+#include <Poco/URI.h>
+
+
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+class {{classname}} {
+
+public:
+    {{classname}}(const int timeOut = 0);
+    ~{{classname}}();
+
+    void initializeServerConfigs();
+    int setDefaultServerValue(int serverIndex,const std::string &operation, const std::string &variable,const std::string &val);
+    void setServerIndex(const std::string &operation, int serverIndex);
+    void setApiKey(const std::string &apiKeyName, const std::string &apiKey);
+    void setBearerToken(const std::string &token);
+    void setUsername(const std::string &username);
+    void setPassword(const std::string &password);
+    void setTimeOut(const int timeOut);
+    void setWorkingDirectory(const std::string &path);
+    void setNetworkAccessManager(Poco::Net::HTTPClientSession* manager);
+    int addServerConfiguration(const std::string &operation, const Poco::URI &url, const std::string &description = "", const std::map<std::string, {{prefix}}ServerVariable> &variables = std::map<std::string, {{prefix}}ServerVariable>());
+    void setNewServerForAllOperations(const Poco::URI &url, const std::string &description = "", const std::map<std::string, {{prefix}}ServerVariable> &variables =  std::map<std::string, {{prefix}}ServerVariable>());
+    void setNewServer(const std::string &operation, const Poco::URI &url, const std::string &description = "", const std::map<std::string, {{prefix}}ServerVariable> &variables =  std::map<std::string, {{prefix}}ServerVariable>());
+    void addHeaders(const std::string &key, const std::string &value);
+    void enableRequestCompression();
+    void enableResponseCompression();
+    void abortRequests();
+    std::string getParamStylePrefix(const std::string &style);
+    std::string getParamStyleSuffix(const std::string &style);
+    std::string getParamStyleDelimiter(const std::string &style, const std::string &name, bool isExplode);
+{{#operations}}{{#operation}}
+{{#hasParams}}    /**
+    {{#allParams}}
+    {{#required}}
+    * @param[in]  {{paramName}} {{{dataType}}} [required]
+    {{/required}}
+    {{^required}}
+    * @param[in]  {{paramName}} {{{dataType}}} [optional]
+    {{/required}}
+    {{/allParams}}
+    */{{/hasParams}}
+    void {{nickname}}({{#allParams}}{{#required}}const {{{dataType}}} &{{/required}}{{^required}}const ::{{cppNamespace}}::OptionalParam<{{{dataType}}}> &{{/required}}{{paramName}}{{^required}} = ::{{cppNamespace}}::OptionalParam<{{{dataType}}}>(){{/required}}{{^-last}}, {{/-last}}{{/allParams}});
+{{/operation}}{{/operations}}
+
+private:
+    std::map<std::string, int> _serverIndices;
+    std::map<std::string, std::list<{{prefix}}ServerConfiguration>> _serverConfigs;
+    std::map<std::string, std::string> _apiKeys;
+    std::string _bearerToken;
+    std::string _username;
+    std::string _password;
+    int _timeOut;
+    std::string _workingDirectory;
+    Poco::Net::HTTPClientSession* _manager;
+    std::map<std::string, std::string> _defaultHeaders;
+    bool _isResponseCompressionEnabled;
+    bool _isRequestCompressionEnabled;
+    {{prefix}}HttpRequestInput _latestInput;
+    {{prefix}}HttpRequestWorker *_latestWorker;
+    std::vector<std::string> _latestScope;
+
+    int _OauthMethod = 0;
+{{#operations}}{{#operation}}
+    void {{nickname}}Callback({{prefix}}HttpRequestWorker *worker);{{/operation}}{{/operations}}
+
+
+
+    void tokenAvailable();
+
+};
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}
+#endif

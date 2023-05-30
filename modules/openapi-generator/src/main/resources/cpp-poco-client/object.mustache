@@ -1,0 +1,61 @@
+{{>licenseInfo}}
+#ifndef {{prefix}}_OBJECT_H
+#define {{prefix}}_OBJECT_H
+
+#include <Poco/JSON/Object.h>
+#include <Poco/JSON/Parser.h>
+
+{{#cppNamespaceDeclarations}}
+namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+class {{prefix}}Object {
+public:
+    {{prefix}}Object() {}
+
+    {{prefix}}Object(std::string jsonString) {
+        fromJson(jsonString);
+    }
+
+    virtual ~{{prefix}}Object() {}
+
+    virtual Poco::JSON::Object::Ptr asJsonObject() const {
+        return jObj;
+    }
+
+    virtual std::string asJson() const {
+        std::ostringstream os;
+        jObj->stringify(os, 0);
+
+        return os.str();
+    }
+
+    virtual void fromJson(std::string jsonString) {
+        Poco::JSON::Parser parser;
+        Poco::Dynamic::Var result = parser.parse(jsonString);
+        jObj = result.extract<Poco::JSON::Object::Ptr>();
+    }
+
+    virtual void fromJsonObject(Poco::JSON::Object::Ptr json) {
+        jObj = json;
+    }
+
+
+private:
+    Poco::JSON::Object::Ptr jObj;
+};
+
+inline bool operator==(const {{prefix}}Object& left, const {{prefix}}Object& right){  
+    return (left.asJsonObject() == right.asJsonObject());  
+}
+
+//inline uint qHash(const {{prefix}}Object& obj, uint seed = 0) noexcept{
+    //return qHash(obj.asJsonObject(), seed);
+//}
+
+{{#cppNamespaceDeclarations}}
+} // namespace {{this}}
+{{/cppNamespaceDeclarations}}
+
+
+#endif // {{prefix}}_OBJECT_H

@@ -1,0 +1,182 @@
+{{>licenseInfo}}
+#include <Poco/File.h>
+#include <Poco/Path.h>
+#include <Poco/FileStream.h>
+
+#include <Poco/JSON/JSON.h>
+#include <Poco/JSON/Object.h>
+#include <Poco/JSON/Parser.h>
+
+#include "{{prefix}}HttpFileElement.h"
+
+{{#cppNamespaceDeclarations}}
+    namespace {{this}} {
+{{/cppNamespaceDeclarations}}
+
+void {{prefix}}HttpFileElement::setMimeType(const std::string &mime) {
+    mime_type = mime;
+}
+
+void {{prefix}}HttpFileElement::setFileName(const std::string &name) {
+    local_filename = name;
+}
+
+void {{prefix}}HttpFileElement::setVariableName(const std::string &name) {
+    variable_name = name;
+}
+
+void {{prefix}}HttpFileElement::setRequestFileName(const std::string &name) {
+    request_filename = name;
+}
+
+bool {{prefix}}HttpFileElement::isSet() const {
+    return !local_filename.empty() || !request_filename.empty();
+}
+
+std::string {{prefix}}HttpFileElement::asJson() const {
+    Poco::Path filePath(local_filename);
+    Poco::File file(filePath);
+
+    std::vector<char> buffer(file.getSize());
+
+    if (file.exists()) {
+        Poco::FileInputStream istr(file.path());
+        istr.read(buffer.data(), buffer.size());
+    }
+    else{
+        std::cerr << "Error opening file " << local_filename << std::endl;
+    }
+    return buffer.data();
+}
+
+Poco::Dynamic::Var {{prefix}}HttpFileElement::asJsonValue() const {
+    Poco::Path filePath(local_filename);
+    Poco::File file(filePath);
+
+    std::vector<char> buffer(file.getSize());
+
+    if (file.exists()) {
+        Poco::FileInputStream istr(file.path());
+        istr.read(buffer.data(), buffer.size());
+    }
+    else{
+        std::cerr << "Error opening file " << local_filename << std::endl;
+    }
+
+    Poco::JSON::Parser parser;
+    return parser.parse(buffer.data()).extract<Poco::JSON::Object::Ptr>();
+
+}
+
+bool {{prefix}}HttpFileElement::fromStringValue(const std::string &instr) {
+    Poco::Path filePath(local_filename);
+    Poco::File file(filePath);
+
+    std::vector<char> buffer(file.getSize());
+    
+    bool result = false;
+    if (file.exists()) {
+        file.remove();
+    }
+    file.createFile();
+    Poco::FileOutputStream ostr(file.path());
+    ostr << instr;
+    if (!ostr.fail()) {
+        result = true;
+    }    
+    ostr.close();
+    
+    if (!result) {
+        std::cerr << "Error creating file " << local_filename << std::endl;
+    }
+    return result;
+}
+
+bool {{prefix}}HttpFileElement::fromJsonValue(const Poco::Dynamic::Var &jval) {
+    Poco::Path filePath(local_filename);
+    Poco::File file(filePath);
+    
+    Poco::JSON::Object::Ptr jsonObject = jval.extract<Poco::JSON::Object::Ptr>();
+    std::ostringstream os;
+    jsonObject->stringify(os, 0);
+    
+    std::string input = os.str();
+
+    bool result = false;
+    if (file.exists()) {
+        file.remove();
+    }
+    file.createFile();
+    Poco::FileOutputStream ostr(file.path());
+    ostr << input;
+    if (!ostr.fail()) {
+        result = true;
+    }
+    ostr.close();
+
+    if (!result) {
+        std::cerr << "Error creating file " << local_filename << std::endl;
+    }
+    return result;
+}
+
+std::vector<char> {{prefix}}HttpFileElement::asByteArray() const {
+    Poco::Path filePath(local_filename);
+    Poco::File file(filePath);
+
+    std::vector<char> byteArray(file.getSize());
+
+    if (file.exists()) {
+        Poco::FileInputStream istr(file.path());
+        istr.read(byteArray.data(), byteArray.size());
+    }
+    else{
+        std::cerr << "Error opening file " << local_filename << std::endl;
+    }
+    return byteArray;
+}
+
+bool {{prefix}}HttpFileElement::fromByteArray(const std::vector<char> &bytes) {
+    Poco::Path filePath(local_filename);
+    Poco::File file(filePath);
+    
+    std::string input;
+    input.assign(bytes.begin(), bytes.end());
+
+    bool result = false;
+    if (file.exists()) {
+        file.remove();
+    }
+    file.createFile();
+    Poco::FileOutputStream ostr(file.path());
+    ostr << input;
+    if (!ostr.fail()) {
+        result = true;
+    }
+    ostr.close();
+
+    if (!result) {
+        std::cerr << "Error creating file " << local_filename << std::endl;
+    }
+    return result;
+}
+
+bool {{prefix}}HttpFileElement::saveToFile(const std::string &varName, const std::string &localFName, const std::string &reqFname, const std::string &mime, const std::vector<char> &bytes) {
+    setMimeType(mime);
+    setFileName(localFName);
+    setVariableName(varName);
+    setRequestFileName(reqFname);
+    return fromByteArray(bytes);
+}
+
+std::vector<char> {{prefix}}HttpFileElement::loadFromFile(const std::string &varName, const std::string &localFName, const std::string &reqFname, const std::string &mime) {
+    setMimeType(mime);
+    setFileName(localFName);
+    setVariableName(varName);
+    setRequestFileName(reqFname);
+    return asByteArray();
+}
+
+{{#cppNamespaceDeclarations}}
+    } // namespace {{this}}
+{{/cppNamespaceDeclarations}}
